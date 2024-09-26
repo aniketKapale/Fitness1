@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import cv2
 import os
+import subprocess
 from process_frame import ProcessFrame  # Assuming you have this module for frame processing
 from thresholds import get_thresholds_beginner  # Assuming you have this module for thresholds
 from utils import get_mediapipe_pose  # Assuming you have this module for pose estimation
@@ -40,20 +41,20 @@ def process_video():
     if not cap.isOpened():
         return jsonify({'error': 'Error opening video file'}), 500
 
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    # Use MP4V codec for intermediate video
+    fourcc = cv2.VideoWriter_fourcc(*'MP4V')
     fps = cap.get(cv2.CAP_PROP_FPS)
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
-    # Delete existing processed video if it exists
-    processed_video_path = os.path.join(FRONTEND_VIDEOS_FOLDER, 'processed_video.mp4')
-    if os.path.exists(processed_video_path):
-        try:
-            os.remove(processed_video_path)
-            print(f"Deleted existing video: {processed_video_path}")
-        except PermissionError as e:
-            print(f"PermissionError while deleting video: {e}")
-            return jsonify({'error': 'Unable to delete existing processed video'}), 500
+    # Path for intermediate and final processed video
+    processed_video_path = os.path.join(FRONTEND_VIDEOS_FOLDER, 'processed_intermediate_video.mp4')
+    final_processed_video_path = os.path.join(FRONTEND_VIDEOS_FOLDER, 'processed_video.mp4')
+
+    # Remove existing processed videos
+    for video in [processed_video_path, final_processed_video_path]:
+        if os.path.exists(video):
+            os.remove(video)
 
     out = cv2.VideoWriter(processed_video_path, fourcc, fps, (width, height))
     print(f"Processing video frames and writing to: {processed_video_path}")
@@ -66,28 +67,44 @@ def process_video():
 
             # Process frame
             processed_frame, _ = process_frame.process(frame, pose)
+            
+            if processed_frame is None:
+                continue
+
+            # Ensure processed frame matches original dimensions
+            if processed_frame.shape[0] != height or processed_frame.shape[1] != width:
+                processed_frame = cv2.resize(processed_frame, (width, height))
+
             out.write(processed_frame)
     finally:
-        # Ensure resources are released in the event of an exception
-        cap.release()  # Make sure the video capture object is released
-        out.release()  # Make sure the video writer object is released
+        cap.release()
+        out.release()
 
-    # Check if the processed video exists
-    if not os.path.exists(processed_video_path):
-        return jsonify({'error': 'Processed video was not created'}), 500
+    # Convert processed video to H.264 format using FFmpeg
+    try:
+        ffmpeg_command = r'ffmpeg -i "C:\\Users\\aziz aman\\OneDrive\\Desktop\\100x dev\\projects\\Fitness React\\frontend\\public\\videos\\processed_intermediate_video.mp4" -vcodec libx264 -acodec aac -strict -2 "C:\\Users\\aziz aman\\OneDrive\\Desktop\\100x dev\\projects\\Fitness React\\frontend\\public\\videos\\processed_video.mp4"'
+        # ffmpeg_command = "ffmpeg -i C:\Users\aziz aman\OneDrive\Desktop\100x dev\projects\Fitness React\frontend\public\videos\processed_intermediate_video.mp4 -vcodec libx264 -acodec aac -strict -2 C:\Users\aziz aman\OneDrive\Desktop\100x dev\projects\Fitness React\frontend\public\videos\processed_video.mp4"
+        subprocess.run(ffmpeg_command, shell=True, check=True)
+        print(f"Converted video saved to: {final_processed_video_path}")
+    except subprocess.CalledProcessError as e:
+        print(f"FFmpeg error: {e}")
+        print(e)
+        return jsonify({'error': 'Video conversion failed'}), 500
 
-    processed_video_size = os.path.getsize(processed_video_path)
-    print(f"Processed video created: {processed_video_size} bytes")
+    # Check if the final processed video exists
+    if not os.path.exists(final_processed_video_path):
+        return jsonify({'error': 'Final processed video was not created'}), 500
 
-    # Return the URL of the processed video (absolute URL to avoid path issues)
-    processed_video_url = f'http://localhost:5000/videos/processed_video'
-    return jsonify({'message': 'Video processed successfully', 'videoUrl': processed_video_url})
+    processed_video_size = os.path.getsize(final_processed_video_path)
+    print(f"Final processed video created: {processed_video_size} bytes")
+
+    # Return the URL of the processed video
+    processed_video_url = f'http://localhost:5000/videos/processed_video.mp4'
+    return jsonify({'message': 'Video processed and converted successfully', 'videoUrl': processed_video_url})
 
 @app.route('/videos/<path:filename>', methods=['GET'])
 def serve_video(filename):
-    # Debugging info
     print(f"Serving video from directory: {FRONTEND_VIDEOS_FOLDER}")
-    print(f"Requested video file: {filename}")
     return send_from_directory(FRONTEND_VIDEOS_FOLDER, filename)
 
 if __name__ == '__main__':
