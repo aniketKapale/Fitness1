@@ -1,6 +1,5 @@
-import  { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback } from 'react';
 import Webcam from 'react-webcam';
-import UploadVideo from './2_Upload_Video';
 import { useNavigate } from 'react-router-dom';
 
 const LiveStream = () => {
@@ -41,23 +40,55 @@ const LiveStream = () => {
             setDownloadLink(url);
         }
     }, [recordedChunks]);
+
     const redirectToUpload = () => {
         navigate('/upload');
     };
 
     return (
-        <div>
-            <h1>AI Fitness Trainer For Gym</h1>
-            <Webcam ref={webcamRef} />
-            <div>
-                <button onClick={handleStartCaptureClick}>Start Capture</button>
-                <button onClick={handleStopCaptureClick}>Stop Capture</button>
-                <button onClick={handleDownload}>Download Video</button>
-                <button onClick={redirectToUpload }>Upload Video</button>
+        <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-6">
+            <h1 className="text-4xl font-bold mb-8 text-center">AI Fitness Trainer For Gym</h1>
+            
+            <div className="bg-gray-800 p-8 rounded-lg shadow-lg flex flex-col items-center w-full max-w-2xl">
+                <Webcam ref={webcamRef} className="rounded-lg mb-6 w-full" />
+
+                <div className="flex space-x-4 mb-6">
+                    <button 
+                        onClick={handleStartCaptureClick} 
+                        className="px-6 py-2 bg-blue-600 rounded-lg text-lg font-bold hover:bg-blue-500 transition"
+                    >
+                        Start Capture
+                    </button>
+                    <button 
+                        onClick={handleStopCaptureClick} 
+                        className="px-6 py-2 bg-red-600 rounded-lg text-lg font-bold hover:bg-red-500 transition"
+                    >
+                        Stop Capture
+                    </button>
+                    <button 
+                        onClick={handleDownload} 
+                        className="px-6 py-2 bg-green-600 rounded-lg text-lg font-bold hover:bg-green-500 transition"
+                    >
+                        Download Video
+                    </button>
+                    <button 
+                        onClick={redirectToUpload} 
+                        className="px-6 py-2 bg-purple-600 rounded-lg text-lg font-bold hover:bg-purple-500 transition"
+                    >
+                        Upload Video
+                    </button>
+                </div>
+
+                {downloadLink && (
+                    <a 
+                        href={downloadLink} 
+                        download="output_live.webm"
+                        className="text-blue-400 underline hover:text-blue-500"
+                    >
+                        Download Captured Video
+                    </a>
+                )}
             </div>
-            {downloadLink && (
-                <a href={downloadLink} download="output_live.webm">Download Captured Video</a>
-            )}
         </div>
     );
 };

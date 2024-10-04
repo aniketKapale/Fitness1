@@ -14,8 +14,8 @@ const UploadVideo = () => {
     formData.append("video", file);
 
     try {
-      setLoading(true); // Set loading state to true
-      setError(null); // Clear any previous errors
+      setLoading(true);
+      setError(null);
 
       // Make the API request to process the video
       const response = await axios.post(
@@ -25,17 +25,16 @@ const UploadVideo = () => {
           headers: {
             "Content-Type": "multipart/form-data",
           },
-        },
+        }
       );
 
       const { videoUrl } = response.data;
-      console.log("Processed video URL:", videoUrl);
-      setProcessedVideoUrl(videoUrl); // Set the processed video URL
-      setLoading(false); // Set loading state to false
+      setProcessedVideoUrl(videoUrl);
+      setLoading(false);
     } catch (error) {
       console.error("Error uploading and processing video:", error);
       setError("Error processing video. Please try again.");
-      setLoading(false); // Set loading state to false even in case of error
+      setLoading(false);
     }
   };
 
@@ -43,28 +42,47 @@ const UploadVideo = () => {
   useEffect(() => {
     if (processedVideoUrl) {
       console.log("Processed video URL changed:", processedVideoUrl);
-      // Any additional actions to take when the URL changes can go here
     }
-  }, [processedVideoUrl]); // Dependency array to watch for changes in processedVideoUrl
+  }, [processedVideoUrl]);
 
   return (
-    <div>
-      <input type="file" accept="video/*" onChange={handleFileUpload} />
-      {loading && <p>Processing video, please wait...</p>}
-      {error && <p style={{ color: "red" }}>{error}</p>}
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-900 text-white px-6 py-12">
+      <div className="w-full max-w-2xl p-8 bg-gray-800 rounded-lg shadow-lg">
+        <h1 className="text-3xl font-bold mb-6 text-center">
+          Upload and Process Your Video
+        </h1>
 
-      {/* Display processed video once URL is available */}
-      {processedVideoUrl && (
-        <div>
-          <h3>Processed Video:</h3>
-          <video key={processedVideoUrl} width="640" height="480" controls>
-            <source src={processedVideoUrl} type="video/mp4" />
-            Your browser does not support the video tag.
-          </video>
-        </div>
-      )}
+        <input
+          type="file"
+          accept="video/*"
+          onChange={handleFileUpload}
+          className="block w-full text-sm text-gray-500
+            file:mr-4 file:py-2 file:px-4
+            file:rounded-full file:border-0
+            file:text-sm file:font-semibold
+            file:bg-blue-500 file:text-white
+            hover:file:bg-blue-600 mb-6"
+        />
 
-      {/* Hardcoded video example (ensure the path is correct) */}
+        {loading && <p className="text-center text-yellow-400">Processing video, please wait...</p>}
+        {error && <p className="text-center text-red-400">{error}</p>}
+
+        {processedVideoUrl && (
+          <div className="mt-8">
+            <h3 className="text-xl font-semibold mb-4">Processed Video:</h3>
+            <video
+              key={processedVideoUrl}
+              width="640"
+              height="480"
+              controls
+              className="w-full h-auto rounded-lg shadow-lg"
+            >
+              <source src={processedVideoUrl} type="video/mp4" />
+              Your browser does not support the video tag.
+            </video>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
