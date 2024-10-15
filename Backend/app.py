@@ -1,7 +1,8 @@
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, send_file, after_this_request
 from flask_cors import CORS
 import cv2
 import os
+import uuid
 import subprocess
 from process_frame import ProcessFrame  # Assuming you have this module for frame processing
 from thresholds import get_thresholds_beginner  # Assuming you have this module for thresholds
@@ -31,8 +32,10 @@ def process_video():
     if video_file.filename == '':
         return jsonify({'error': 'No video file selected'}), 400
 
-    # Save video file temporarily
-    temp_video_path = os.path.join(FRONTEND_VIDEOS_FOLDER, 'temp_video.mp4')
+    # Generate a unique ID for this video processing session
+    unique_id = uuid.uuid4().hex
+    temp_video_path = os.path.join(FRONTEND_VIDEOS_FOLDER, f'temp_video_{unique_id}.mp4')
+
     video_file.save(temp_video_path)
     print(f"Saved uploaded video to: {temp_video_path}")
 
@@ -48,8 +51,8 @@ def process_video():
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
     # Path for intermediate and final processed video
-    processed_video_path = os.path.join(FRONTEND_VIDEOS_FOLDER, 'processed_intermediate_video.mp4')
-    final_processed_video_path = os.path.join(FRONTEND_VIDEOS_FOLDER, 'processed_video.mp4')
+    processed_video_path = os.path.join(FRONTEND_VIDEOS_FOLDER, f'processed_intermediate_video_{unique_id}.mp4')
+    final_processed_video_path = os.path.join(FRONTEND_VIDEOS_FOLDER, f'processed_video_{unique_id}.mp4')
 
     # Remove existing processed videos
     for video in [processed_video_path, final_processed_video_path]:
@@ -80,27 +83,50 @@ def process_video():
         cap.release()
         out.release()
 
+    # Delete the uploaded temporary video after processing
+    if os.path.exists(temp_video_path):
+        os.remove(temp_video_path)
+        print(f"Deleted temporary video: {temp_video_path}")
+
     # Convert processed video to H.264 format using FFmpeg
     try:
-        ffmpeg_command = r'ffmpeg -i "C:\\Users\\aziz aman\\OneDrive\\Desktop\\100x dev\\projects\\Fitness React\\frontend\\public\\videos\\processed_intermediate_video.mp4" -vcodec libx264 -acodec aac -strict -2 "C:\\Users\\aziz aman\\OneDrive\\Desktop\\100x dev\\projects\\Fitness React\\frontend\\public\\videos\\processed_video.mp4"'
-        # ffmpeg_command = "ffmpeg -i C:\Users\aziz aman\OneDrive\Desktop\100x dev\projects\Fitness React\frontend\public\videos\processed_intermediate_video.mp4 -vcodec libx264 -acodec aac -strict -2 C:\Users\aziz aman\OneDrive\Desktop\100x dev\projects\Fitness React\frontend\public\videos\processed_video.mp4"
+        ffmpeg_command = f'ffmpeg -i "{processed_video_path}" -vcodec libx264 -acodec aac -strict -2 "{final_processed_video_path}"'
         subprocess.run(ffmpeg_command, shell=True, check=True)
         print(f"Converted video saved to: {final_processed_video_path}")
     except subprocess.CalledProcessError as e:
         print(f"FFmpeg error: {e}")
-        print(e)
         return jsonify({'error': 'Video conversion failed'}), 500
+
+    # Delete intermediate processed video after conversion
+    if os.path.exists(processed_video_path):
+        os.remove(processed_video_path)
+        print(f"Deleted intermediate video: {processed_video_path}")
 
     # Check if the final processed video exists
     if not os.path.exists(final_processed_video_path):
         return jsonify({'error': 'Final processed video was not created'}), 500
 
-    processed_video_size = os.path.getsize(final_processed_video_path)
-    print(f"Final processed video created: {processed_video_size} bytes")
-
-    # Return the URL of the processed video
-    processed_video_url = f'http://localhost:5000/videos/processed_video.mp4'
+    # Return the URL of the processed video for download
+    processed_video_url = f'http://localhost:5000/download-video/{os.path.basename(final_processed_video_path)}'
     return jsonify({'message': 'Video processed and converted successfully', 'videoUrl': processed_video_url})
+
+@app.route('/download-video/<path:filename>', methods=['GET'])
+def download_video(filename):
+    video_path = os.path.join(FRONTEND_VIDEOS_FOLDER, filename)
+
+    # Ensure file deletion after request completes
+    @after_this_request
+    def remove_file(response):
+        if os.path.exists(video_path):
+            try:
+                os.remove(video_path)
+                print(f"Deleted processed video after download: {video_path}")
+            except Exception as e:
+                print(f"Error deleting file {video_path}: {e}")
+        return response
+
+    # Send the video file as an attachment for download
+    return send_file(video_path, as_attachment=True)
 
 @app.route('/videos/<path:filename>', methods=['GET'])
 def serve_video(filename):
