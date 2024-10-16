@@ -90,7 +90,9 @@ function LandingPage() {
             <p className="text-lg mb-8 text-gray-400">
               Combining AI with fitness expertise to deliver real-time personalized feedback, helping you achieve your fitness goals efficiently and safely.
             </p>
-            <button className="px-8 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg shadow-lg text-lg font-semibold hover:scale-105 transition-transform">
+            <button className="px-8 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg shadow-lg text-lg font-semibold hover:scale-105 transition-transform" 
+            onClick={() => navigate("choice")}
+            >
               Learn More
             </button>
           </div>
