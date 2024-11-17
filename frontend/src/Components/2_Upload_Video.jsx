@@ -19,7 +19,7 @@ const UploadVideo = () => {
 
       // Make the API request to process the video
       const response = await axios.post(
-        "http://localhost:8000/process-video",
+        "https://fitness1-mfoj.onrender.com/process-video",
         formData,
         {
           headers: {
