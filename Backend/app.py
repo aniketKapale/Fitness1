@@ -107,7 +107,7 @@ def process_video():
         return jsonify({'error': 'Final processed video was not created'}), 500
 
     # Return the URL of the processed video for download
-    processed_video_url = f'http://localhost:5000/download-video/{os.path.basename(final_processed_video_path)}'
+    processed_video_url = f'https://fitness1-mfoj.onrender.com/download-video/{os.path.basename(final_processed_video_path)}'
     return jsonify({'message': 'Video processed and converted successfully', 'videoUrl': processed_video_url})
 
 @app.route('/download-video/<path:filename>', methods=['GET'])
